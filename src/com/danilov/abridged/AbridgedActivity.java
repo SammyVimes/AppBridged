@@ -3,10 +3,14 @@ package com.danilov.abridged;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.TypedValue;
+import android.view.Display;
 import android.view.Menu;
 import android.view.View;
+import android.view.View.MeasureSpec;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ProgressBar;
@@ -26,6 +30,11 @@ public class AbridgedActivity extends Activity {
 	private Button buttonPrevBot;
 	private Button buttonNextBot;
 	private int curPage;
+	private String testText = new String();
+	private int curLastSymbolIndex = 0;
+	private int curFirstSymbolIndex = 0;
+	private boolean hasPrevPage = false;
+	private boolean hasNextPage = false;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -64,18 +73,16 @@ class ResultTask extends AsyncTask<String, Void, String>{
 			MyParser p = new MyParser();
 			p.parseText(params[0]);
 			text = p.getText();
+			testText = p.getTestText();
 			return null;
 		}
 		
 		@Override
 	    protected void onPostExecute(String result) {
-			curPage = 0;
-			if(text.size() > 0){
-				tv.setText(text.get(curPage));
-				tv.setVisibility(View.VISIBLE);
-				progressBar.setVisibility(View.INVISIBLE);
-				handleButtonState();
-			}
+			nextPage();
+			handleButtonState();
+			tv.setVisibility(View.VISIBLE);
+			progressBar.setVisibility(View.INVISIBLE);
 	    }
     }
 
@@ -86,21 +93,13 @@ class ResultTask extends AsyncTask<String, Void, String>{
 			boolean changed = false;
 			switch(v.getId()){
 			case R.id.buttonPrevBot:
-				if(curPage > 0){
-					curPage--;
-					changed = true;
-				}
+				prevPage();
 				break;
 			case R.id.buttonNextBot:
-				if(curPage < text.size() - 1){
-					curPage++;
-					changed = true;
-				}
+				nextPage();
 				break;
 			}
-			if(changed){
-				loadCurPage();
-			}
+			handleButtonState();
 		}
 		
 	}
@@ -112,17 +111,115 @@ class ResultTask extends AsyncTask<String, Void, String>{
 	}
 
 	private void handleButtonState(){
-		if(curPage == 0){
+		if(!hasPrevPage){
 			buttonPrevBot.setVisibility(View.INVISIBLE);
 		}else{
 			buttonPrevBot.setVisibility(View.VISIBLE);
 		}
-		if(curPage == text.size() - 1){
+		if(!hasNextPage){
 			buttonNextBot.setVisibility(View.INVISIBLE);
 		}else{
 			buttonNextBot.setVisibility(View.VISIBLE);
 		}
 		
+	}
+	
+	
+	private void nextPage(){
+		String curText = testText.substring(curLastSymbolIndex);
+		int index = 0;
+		boolean flag = false;
+		String tmp;
+		int lastSymbol = 0;
+		String newText = new String();
+		while(!flag){
+			while(curText.charAt(index) != ' '){
+				index++;
+				if(index >= curText.length() - 1){
+					newText = curText;
+					curFirstSymbolIndex = curLastSymbolIndex;
+					curLastSymbolIndex = curText.length() - 1;
+					break;
+				}
+			}
+			index++;
+			tmp = curText.substring(0, index);
+			if(isTextTooLong(tmp)){
+				lastSymbol = tmp.lastIndexOf(' ');
+				newText = curText.substring(0, lastSymbol);
+				curFirstSymbolIndex = curLastSymbolIndex;
+				curLastSymbolIndex = lastSymbol;
+				flag = true;
+			}
+		}
+		tv.setText(newText);
+		if(curLastSymbolIndex <= curText.length() - 1){
+			hasNextPage = true;
+		}else{
+			hasNextPage = false;
+		}
+		if(curFirstSymbolIndex > 0){
+			hasPrevPage = true;
+		}else{
+			hasPrevPage = false;
+		}
+	}
+	
+	private void prevPage(){
+		String curText = testText.substring(0, curFirstSymbolIndex);
+		int index = curFirstSymbolIndex - 1;
+		boolean flag = false;
+		String tmp;
+		int firstSymbol = 0;
+		String newText = new String();
+		while(!flag){
+			while(curText.charAt(index) != ' '){
+				index--;
+				if(index < 0){
+					newText = curText;
+					curFirstSymbolIndex = 0;
+					curLastSymbolIndex = curFirstSymbolIndex;
+					break;
+				}
+			}
+			index--;
+			tmp = curText.substring(index);
+			if(isTextTooLong(tmp)){
+				firstSymbol = tmp.indexOf(' ');
+				newText = curText.substring(firstSymbol, curFirstSymbolIndex);
+				curLastSymbolIndex = curFirstSymbolIndex;
+				curFirstSymbolIndex = firstSymbol;
+				flag = true;
+			}
+		}
+		tv.setText(newText);
+		if(curFirstSymbolIndex > 0){
+			hasPrevPage = true;
+		}else{
+			hasPrevPage = false;
+		}
+	}
+	
+	
+	private boolean isTextTooLong(String newText){
+		boolean isTooLong = false;
+		float textSize = tv.getTextSize();
+		Display mDisplay= getWindowManager().getDefaultDisplay();
+		int deviceWidth= mDisplay.getWidth();
+		int textHeight = getHeight(getBaseContext()	, newText, textSize, deviceWidth);
+		View v = (View) tv.getParent().getParent();
+		isTooLong = textHeight > v.getMeasuredHeight();
+		return isTooLong;
+	}
+	
+	public static int getHeight(Context context, String text, float textSize, int deviceWidth) {
+	    TextView textView = new TextView(context);
+	    textView.setText(text);
+	    textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize);
+	    int widthMeasureSpec = MeasureSpec.makeMeasureSpec(deviceWidth, MeasureSpec.AT_MOST);
+	    int heightMeasureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+	    textView.measure(widthMeasureSpec, heightMeasureSpec);
+	    return textView.getMeasuredHeight();
 	}
 	
 	

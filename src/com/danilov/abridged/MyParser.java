@@ -18,6 +18,7 @@ public class MyParser {
 	
 	private ArrayList<Book> books = new ArrayList<Book>();
 	private ArrayList<String> pagedText = new ArrayList<String>();
+	private String text = new String();
 	
 	public void parseSearch(String request){
 		try {
@@ -41,7 +42,7 @@ public class MyParser {
 	
 	public void parseText(String request){
 		request = getCorrectLink(request);
-		String text = new String();
+		text = new String();
 		try {
 			Document doc = Jsoup.connect(request).get();
 			Elements results = doc.getElementsByTag("pre");
@@ -99,6 +100,9 @@ public class MyParser {
 		return link;
 	}
 	
+	public String getTestText(){
+		return text;
+	}
 	
 	
 	public ArrayList<Book> getBooks(){
