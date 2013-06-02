@@ -15,30 +15,17 @@
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true" />
 
-    <ScrollView
-        android:id="@+id/scrollView1"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:text="Medium Text"
+        android:textAppearance="?android:attr/textAppearanceMedium" 
         android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginTop="16dp"
-        android:layout_above="@+id/buttonNextBot" >
+		android:layout_alignParentTop="true"
+		android:layout_marginTop="16dp"
+		android:layout_above="@+id/buttonNextBot"/>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" >
-
-            <TextView
-                android:id="@+id/text"
-                android:layout_width="fill_parent"
-                android:layout_height="fill_parent"
-                android:text="Medium Text"
-                android:textAppearance="?android:attr/textAppearanceMedium" />
-            
-            
-        </LinearLayout>
-    </ScrollView>
 
            
     

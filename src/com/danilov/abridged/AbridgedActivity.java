@@ -26,7 +26,6 @@ public class AbridgedActivity extends Activity {
 	private TextView tv;
 	private ProgressBar progressBar;
 	private ArrayList<String> text = new ArrayList<String>();
-	private ScrollView scrollView;
 	private Button buttonPrevBot;
 	private Button buttonNextBot;
 	private int curPage;
@@ -47,14 +46,12 @@ public class AbridgedActivity extends Activity {
 		MyOnClickListener listener = new MyOnClickListener();
 		buttonPrevBot.setOnClickListener(listener);
 		buttonNextBot.setOnClickListener(listener);
-		scrollView = (ScrollView)findViewById(R.id.scrollView1);
 		if(savedInstanceState == null){
 			String link = getIntent().getStringExtra(LINK);
 			new ResultTask().execute(link);
 		}else{
 			text = (ArrayList<String>) savedInstanceState.getSerializable(TEXT_ARRAY);
 			curPage = savedInstanceState.getInt(CURRENT_PAGE);
-			loadCurPage();
 		}
 	}
 	
@@ -103,12 +100,7 @@ class ResultTask extends AsyncTask<String, Void, String>{
 		}
 		
 	}
-	
-	private void loadCurPage(){
-		tv.setText(text.get(curPage));
-		handleButtonState();
-		scrollView.smoothScrollTo(0, 0);
-	}
+
 
 	private void handleButtonState(){
 		if(!hasPrevPage){
@@ -124,104 +116,103 @@ class ResultTask extends AsyncTask<String, Void, String>{
 		
 	}
 	
-	
 	private void nextPage(){
 		String curText = testText.substring(curLastSymbolIndex);
-		int index = 0;
-		boolean flag = false;
-		String tmp;
-		int lastSymbol = 0;
-		String newText = new String();
-		while(!flag){
-			while(curText.charAt(index) != ' '){
-				index++;
-				if(index >= curText.length() - 1){
-					newText = curText;
-					curFirstSymbolIndex = curLastSymbolIndex;
-					curLastSymbolIndex = curText.length() - 1;
-					break;
-				}
-			}
-			index++;
-			tmp = curText.substring(0, index);
-			if(isTextTooLong(tmp)){
-				lastSymbol = tmp.lastIndexOf(' ');
-				newText = curText.substring(0, lastSymbol);
-				curFirstSymbolIndex = curLastSymbolIndex;
-				curLastSymbolIndex = lastSymbol;
-				flag = true;
-			}
+		int totalLine = tv.getHeight() / tv.getLineHeight();
+		String textToBeShown = new String();
+		for(int i = 0; i < totalLine; i++){
+			int number = tv.getPaint().breakText(curText, 0, curText.length(), true,
+                    tv.getWidth(), null);
+			String tmp = curText.substring(0, number);
+			textToBeShown += tmp;
+			curText = curText.substring(number);
+			i += quantityOfEnters(tmp);
 		}
-		tv.setText(newText);
-		if(curLastSymbolIndex <= curText.length() - 1){
+		int lastSpaceIndex = textToBeShown.lastIndexOf(' ');
+		if(lastSpaceIndex != -1){
+			textToBeShown = textToBeShown.substring(0, lastSpaceIndex);
+		}
+		tv.setText(textToBeShown);
+		curFirstSymbolIndex = curLastSymbolIndex;
+		curLastSymbolIndex = curFirstSymbolIndex + textToBeShown.length() + 1;
+		if(curFirstSymbolIndex > 0){
+			hasPrevPage = true;
+		}else{
+			hasPrevPage = false;
+		}
+		if(curLastSymbolIndex < testText.length()){
 			hasNextPage = true;
 		}else{
 			hasNextPage = false;
 		}
-		if(curFirstSymbolIndex > 0){
-			hasPrevPage = true;
-		}else{
-			hasPrevPage = false;
-		}
 	}
 	
 	private void prevPage(){
+		ArrayList<String> lines = new ArrayList<String>();
 		String curText = testText.substring(0, curFirstSymbolIndex);
-		int index = curFirstSymbolIndex - 1;
-		boolean flag = false;
-		String tmp;
-		int firstSymbol = 0;
-		String newText = new String();
-		while(!flag){
-			while(curText.charAt(index) != ' '){
-				index--;
-				if(index < 0){
-					newText = curText;
-					curFirstSymbolIndex = 0;
-					curLastSymbolIndex = curFirstSymbolIndex;
-					break;
-				}
-			}
-			index--;
-			tmp = curText.substring(index);
-			if(isTextTooLong(tmp)){
-				firstSymbol = tmp.indexOf(' ');
-				newText = curText.substring(firstSymbol, curFirstSymbolIndex);
-				curLastSymbolIndex = curFirstSymbolIndex;
-				curFirstSymbolIndex = firstSymbol;
-				flag = true;
-			}
+		int totalLine = tv.getHeight() / tv.getLineHeight();
+		String textToBeShown = new String();
+		String inversedString = getInversedString(curText);
+		for(int i = 0; i < totalLine; i++){
+			int number = tv.getPaint().breakText(inversedString, 0, inversedString.length(), true,
+                    tv.getWidth(), null);
+			String tmp = curText.substring(curText.length() - number);
+			lines.add(tmp);
+			curText = curText.substring(0, curText.length() - number);
+			inversedString = inversedString.substring(number);
+			i += quantityOfEnters(tmp);
 		}
-		tv.setText(newText);
+		textToBeShown = inversedListToString(lines);
+		int firstSpaceIndex = textToBeShown.indexOf(' ');
+		if(firstSpaceIndex != -1 && firstSpaceIndex < textToBeShown.length() - 1){
+			textToBeShown = textToBeShown.substring(firstSpaceIndex + 1);
+		}
+		tv.setText(textToBeShown);
+		curLastSymbolIndex = curFirstSymbolIndex;
+		curFirstSymbolIndex = curFirstSymbolIndex - textToBeShown.length();
 		if(curFirstSymbolIndex > 0){
 			hasPrevPage = true;
 		}else{
 			hasPrevPage = false;
 		}
+		if(curLastSymbolIndex < testText.length()){
+			hasNextPage = true;
+		}else{
+			hasNextPage = false;
+		}
 	}
 	
-	
-	private boolean isTextTooLong(String newText){
-		boolean isTooLong = false;
-		float textSize = tv.getTextSize();
-		Display mDisplay= getWindowManager().getDefaultDisplay();
-		int deviceWidth= mDisplay.getWidth();
-		int textHeight = getHeight(getBaseContext()	, newText, textSize, deviceWidth);
-		View v = (View) tv.getParent().getParent();
-		isTooLong = textHeight > v.getMeasuredHeight();
-		return isTooLong;
+	private static int quantityOfEnters(String line){
+		int quantity = 0;
+		int index = line.indexOf("\n");
+		while(index != -1){
+			quantity++;
+			line = line.substring(index + 1);
+			index = line.indexOf("\n");
+		}
+		return quantity;
 	}
 	
-	public static int getHeight(Context context, String text, float textSize, int deviceWidth) {
-	    TextView textView = new TextView(context);
-	    textView.setText(text);
-	    textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize);
-	    int widthMeasureSpec = MeasureSpec.makeMeasureSpec(deviceWidth, MeasureSpec.AT_MOST);
-	    int heightMeasureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-	    textView.measure(widthMeasureSpec, heightMeasureSpec);
-	    return textView.getMeasuredHeight();
+	private static String getInversedString(String normalString){
+		String inversedString = new String();
+		int count = 0;
+		for(int i = normalString.length() - 1; i >= 0; i--){
+			count++;
+			inversedString += normalString.charAt(i);
+			if(count > 2000){
+				break;
+			}
+		}
+		return inversedString;
 	}
 	
+	private static String inversedListToString(ArrayList<String> list){
+		String result = new String();
+		for(int i = list.size() - 1; i >= 0; i--){
+			result += list.get(i);
+		}
+		return result;
+	}
 	
 
 	@Override
